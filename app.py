@@ -3,12 +3,21 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import json
+import os
 
 app = Flask(__name__)
 
-# إعداد Google Sheets
+# إعداد Google Sheets من متغير البيئة (للأمان)
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+
+if os.getenv('GOOGLE_CREDENTIALS_JSON'):
+    # في منصة Render (استخدام متغير البيئة)
+    creds_dict = json.loads(os.getenv('GOOGLE_CREDENTIALS_JSON'))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+else:
+    # على الجهاز المحلي (للتجربة)
+    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+
 client = gspread.authorize(creds)
 
 # فتح الشيتات
