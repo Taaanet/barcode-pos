@@ -1,1 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>نقطة بيع البقالة</title>
+    <!-- إضافة مكتبة مسح الباركود -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Tahoma', Arial;
+            direction: rtl;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 10px;
+        }
+        .container { max-width: 600px; margin: auto; background: white; padding: 15px; border-radius: 10px; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; }
+        button { background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button.danger { background: #dc3545; }
+        button.success { background: #28a745; }
+        .product-card { background: #e9ecef; padding: 10px; margin: 10px 0; border-radius: 8px; }
+        .cart-item { background: white; border: 1px solid #ddd; padding: 8px; margin: 5px 0; border-radius: 5px; }
+        #invoice { background: #f8f9fa; padding: 15px; margin-top: 20px; border-radius: 8px; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🏪 بقالتي - نقطة بيع</h1>
+    
+    <!-- منطقة الإدخال -->
+    <div class="no-print">
+        <input type="text" id="barcode" placeholder="مسح أو إدخال الباركود" autofocus style="width: 70%;">
+        <button onclick="fetchProduct()">🔍 بحث</button>
+        <button onclick="startScanner()">📷 مسح</button>
+        <div id="scanner-container" style="display:none; margin-top:10px;">
+            <div id="qr-reader" style="width:100%;"></div>
+            <button onclick="stopScanner()">إغلاق الكاميرا</button>
+        </div>
+    </div>
 
+    <!-- معلومات المنتج الحالي -->
+    <div id="productInfo"></div>
+
+    <!-- سلة المشتريات -->
+    <div id="cart"></div>
+
+    <!-- أزرار سريعة -->
+    <div class="no-print">
+        <button onclick="applyDiscount()" style="background:#ffc107; color:#000;">🏷️ خصم</button>
+        <button onclick="finishInvoice()" class="success">✅ إنهاء الفاتورة</button>
+        <button onclick="resetCart()" class="danger">🗑️ فاتورة جديدة</button>
+    </div>
+
+    <!-- الفاتورة -->
+    <div id="invoice"></div>
+</div>
+
+<script>
+    let productsInCart = [];
+    let currentProduct = null;
+    let discountPercent = 0;
+    let html5QrCode = null;
+
+    // جلب المنتج من الخادم
+    async function fetchProduct() {
+        let barcode = document.getElementById('barcode').value.trim();
+        if (!barcode) return;
+        
+        let response = await fetch('/get_product', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({barcode: barcode})
+        });
+        let data = await response.json();
+        
+        if (data.status === 'found') {
+            currentProduct = {barcode: barcode, name: data.name, price: data.price};
+            showProductForm(data.name, data.price);
+        } else {
+            alert("❌ المنتج غير موجود! يرجى إضافته في Google Sheets أولاً.");
+        }
+        document.getElementById('barcode').value = '';
+    }
+
+    function showProductForm(name, price) {
+        document.getElementById('productInfo').innerHTML = `
+            <div class="product-card">
+                <strong>${name}</strong><br>
+                السعر: ${price} ريال<br>
+                العدد: <input type="number" id="qty" value="1" min="1" style="width:80px">
+                <button onclick="addToCart()">➕ إضافة</button>
+            </div>
+        `;
+    }
+
+    function addToCart() {
+        let qty = parseInt(document.getElementById('qty').value);
+        let total = qty * currentProduct.price;
+        productsInCart.push({
+            name: currentProduct.name,
+            price: currentProduct.price,
+            qty: qty,
+            total: total
+        });
+        renderCart();
+        document.getElementById('productInfo').innerHTML = '';
+        document.getElementById('barcode').focus();
+    }
+
+    function renderCart() {
+        let cartDiv = document.getElementById('cart');
+        let subtotal = productsInCart.reduce((sum, p) => sum + p.total, 0);
+        let discountAmount = subtotal * (discountPercent / 100);
+        let finalTotal = subtotal - discountAmount;
+        
+        cartDiv.innerHTML = '<h3>🛒 المنتجات المضافة</h3>';
+        productsInCart.forEach((p, idx) => {
+            cartDiv.innerHTML += `
+                <div class="cart-item">
+                    ${p.name} | عدد: ${p.qty} | إجمالي: ${p.total} ريال
+                    <button onclick="removeItem(${idx})" style="background:#dc3545; padding:2px 8px;">✖️</button>
+                </div>
+            `;
+        });
+        cartDiv.innerHTML += `
+            <hr>
+            <div>💰 المجموع قبل الخصم: ${subtotal.toFixed(2)} ريال</div>
+            <div>🏷️ الخصم (${discountPercent}%): ${discountAmount.toFixed(2)} ريال</div>
+            <div style="font-size:20px; font-weight:bold;">💵 الإجمالي النهائي: ${finalTotal.toFixed(2)} ريال</div>
+        `;
+    }
+
+    function removeItem(index) {
+        productsInCart.splice(index, 1);
+        renderCart();
+    }
+
+    function applyDiscount() {
+        let percent = prompt("أدخل نسبة الخصم (%)", discountPercent);
+        if (percent !== null && !isNaN(percent)) {
+            discountPercent = parseFloat(percent);
+            renderCart();
+        }
+    }
+
+    async function finishInvoice() {
+        if (productsInCart.length === 0) {
+            alert("لا توجد منتجات في الفاتورة");
+            return;
+        }
+        
+        let subtotal = productsInCart.reduce((sum, p) => sum + p.total, 0);
+        let discountAmount = subtotal * (discountPercent / 100);
+        let finalTotal = subtotal - discountAmount;
+        let totalItems = productsInCart.reduce((sum, p) => sum + p.qty, 0);
+        let productsList = productsInCart.map(p => `${p.name}×${p.qty}`).join(',');
+        
+        // حفظ الفاتورة في Google Sheets
+        await fetch('/save_invoice', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                timestamp: new Date().toLocaleString('ar-SA'),
+                total_items: totalItems,
+                total_price: subtotal,
+                discount: discountAmount,
+                final_price: finalTotal,
+                products_list: productsList
+            })
+        });
+        
+        // عرض الفاتورة للطباعة
+        let invoiceHtml = `
+            <div style="text-align:center;">
+                <h2>🏪 فاتورة البقالة</h2>
+                <p>التاريخ: ${new Date().toLocaleString('ar-SA')}</p>
+                <hr>
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr style="background:#ddd;"><th>المنتج</th><th>العدد</th><th>السعر</th><th>الإجمالي</th></tr>
+                    ${productsInCart.map(p => `<tr><td>${p.name}</td><td>${p.qty}</td><td>${p.price}</td><td>${p.total}</td></tr>`).join('')}
+                </table>
+                <hr>
+                <p>المجموع: ${subtotal.toFixed(2)} ريال</p>
+                <p>الخصم: ${discountAmount.toFixed(2)} ريال</p>
+                <h3>الإجمالي النهائي: ${finalTotal.toFixed(2)} ريال</h3>
+                <p>عدد القطع: ${totalItems}</p>
+                <hr>
+                <p>شكراً لتسوقكم! 😊</p>
+            </div>
+            <div class="no-print" style="text-align:center; margin-top:20px;">
+                <button onclick="window.print()">🖨️ طباعة</button>
+            </div>
+        `;
+        document.getElementById('invoice').innerHTML = invoiceHtml;
+    }
+
+    function resetCart() {
+        if (confirm("هل تريد بدء فاتورة جديدة؟")) {
+            productsInCart = [];
+            discountPercent = 0;
+            renderCart();
+            document.getElementById('invoice').innerHTML = '';
+            document.getElementById('barcode').focus();
+        }
+    }
+
+    // مسح الباركود بالكاميرا (مجاني)
+    function startScanner() {
+        let scannerContainer = document.getElementById('scanner-container');
+        scannerContainer.style.display = 'block';
+        
+        html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+        
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+            document.getElementById('barcode').value = decodedText;
+            fetchProduct();
+            stopScanner();
+        }, (error) => {});
+    }
+    
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop();
+            document.getElementById('scanner-container').style.display = 'none';
+        }
+    }
+    
+    // للسماح بالإدخال باليدوي ثم Enter
+    document.getElementById('barcode').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') fetchProduct();
+    });
+</script>
+</body>
+</html>
