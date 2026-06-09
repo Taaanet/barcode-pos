@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التقارير - نظام حضور الطلاب</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header h1 { font-size: 22px; }
+        .header-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .header-buttons a {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .stat-number { font-size: 32px; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; margin-top: 8px; font-size: 13px; }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn-excel { background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; }
+        .btn-print { background: #17a2b8; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; }
+        .btn-refresh { background: #ffc107; color: #333; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; }
+        .btn-reload { background: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; }
+        .btn-excel:hover, .btn-print:hover, .btn-refresh:hover, .btn-reload:hover { opacity: 0.8; transform: translateY(-2px); }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            background: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-content {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            display: none;
+        }
+        .tab-content.active { display: block; }
+        .table-container { overflow-x: auto; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
+        th { background: #667eea; color: white; }
+        .present { color: #28a745; font-weight: bold; }
+        .late { color: #fd7e14; font-weight: bold; }
+        .absent { color: #dc3545; font-weight: bold; }
+        input, select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin: 5px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .nav-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .nav-buttons a {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 5px;
+            display: inline-block;
+        }
+        .error-state {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        @media print {
+            .no-print { display: none; }
+            .header, .tabs, .action-buttons, .stats-grid, .nav-buttons { display: none; }
+            .tab-content { display: block !important; }
+        }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-number { font-size: 24px; }
+            th, td { padding: 8px; font-size: 12px; }
+            .action-buttons { gap: 5px; }
+            .btn-excel, .btn-print, .btn-refresh, .btn-reload { padding: 6px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header no-print">
+        <h1>📊 التقارير والإحصائيات المتقدمة</h1>
+        <div class="header-buttons">
+            <a href="/">🏠 الرئيسية</a>
+            <a href="/scan">📷 المسح</a>
+            <a href="/dashboard">📈 لوحة التحكم</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/users_list">👥 إدارة المستخدمين</a>
+            {% endif %}
+            <a href="/logout">🚪 خروج</a>
+        </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="tabs no-print">
+        <button class="tab active" onclick="showTab('today')">📅 تقرير اليوم</button>
+        <button class="tab" onclick="showTab('date')">🗓️ تقرير بتاريخ</button>
+        <button class="tab" onclick="showTab('monthly')">📆 تقرير شهري</button>
+        <button class="tab" onclick="showTab('absent')">❌ الغائبون اليوم</button>
+        <button class="tab" onclick="showTab('student')">🔍 تقرير طالب</button>
+    </div>
+
+    <!-- تبويب اليوم -->
+    <div id="tab-today" class="tab-content active">
+        <div class="action-buttons no-print">
+            <button class="btn-excel" onclick="exportTodayExcel()">📥 تصدير Excel</button>
+            <button class="btn-print" onclick="printTodayReport()">🖨️ طباعة</button>
+            <button class="btn-refresh" onclick="manualRefresh()">🔄 تحديث يدوي</button>
+            <button class="btn-reload" onclick="fullReload()">🔄 إعادة تحميل الكل</button>
+        </div>
+        <h3>📋 تفاصيل حضور اليوم - <span id="todayDate"></span></h3>
+        <div id="todayTable" class="table-container">جاري التحميل...</div>
+    </div>
+
+    <!-- تبويب تاريخ محدد -->
+    <div id="tab-date" class="tab-content">
+        <div class="action-buttons no-print">
+            <input type="date" id="selectedDate" style="margin-left: 10px;">
+            <button onclick="loadDateReport()">عرض التقرير</button>
+            <button class="btn-excel" onclick="exportDateExcel()">📥 تصدير Excel</button>
+            <button class="btn-print" onclick="printDateReport()">🖨️ طباعة</button>
+        </div>
+        <div id="dateReport"></div>
+    </div>
+
+    <!-- تبويب تقرير شهري -->
+    <div id="tab-monthly" class="tab-content">
+        <div class="action-buttons no-print">
+            <select id="monthSelect">
+                <option value="1">يناير</option><option value="2">فبراير</option><option value="3">مارس</option>
+                <option value="4">أبريل</option><option value="5">مايو</option><option value="6">يونيو</option>
+                <option value="7">يوليو</option><option value="8">أغسطس</option><option value="9">سبتمبر</option>
+                <option value="10">أكتوبر</option><option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+            </select>
+            <select id="yearSelect">
+                <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+            </select>
+            <button onclick="loadMonthlyReport()">عرض التقرير</button>
+            <button class="btn-excel" onclick="exportMonthlyExcel()">📥 تصدير Excel</button>
+            <button class="btn-print" onclick="printMonthlyReport()">🖨️ طباعة</button>
+        </div>
+        <div id="monthlyReport"></div>
+    </div>
+
+    <!-- تبويب الغائبون -->
+    <div id="tab-absent" class="tab-content">
+        <div class="action-buttons no-print">
+            <button class="btn-excel" onclick="exportAbsentExcel()">📥 تصدير Excel</button>
+            <button class="btn-print" onclick="printAbsentReport()">🖨️ طباعة</button>
+            <button class="btn-refresh" onclick="loadAbsentStudents()">🔄 تحديث</button>
+        </div>
+        <h3>❌ الطلاب الغائبون اليوم - <span id="absentDate"></span></h3>
+        <div id="absentTable" class="table-container"></div>
+    </div>
+
+    <!-- تبويب تقرير طالب -->
+    <div id="tab-student" class="tab-content">
+        <div class="action-buttons no-print">
+            <input type="text" id="studentSearch" placeholder="رقم الطالب" style="margin-left: 10px;">
+            <button onclick="searchStudent()">🔍 بحث</button>
+            <button class="btn-excel" onclick="exportStudentExcel()">📥 تصدير Excel</button>
+            <button class="btn-print" onclick="printStudentReport()">🖨️ طباعة</button>
+        </div>
+        <div id="studentResult"></div>
+    </div>
+
+    <div class="nav-buttons no-print">
+        <a href="/">🏠 الرئيسية</a>
+        <a href="/scan">📷 المسح</a>
+        <a href="/dashboard">📈 لوحة التحكم</a>
+    </div>
+</div>
+
+<script>
+// دالة لتنظيف النص من الأحرف الغريبة
+function cleanText(text) {
+    if (!text || text === 'null' || text === 'undefined') return '-';
+    try {
+        let cleaned = String(text);
+        cleaned = cleaned.replace(/侧的/g, '');
+        cleaned = cleaned.replace(/\\u[\dA-F]{4}/gi, '');
+        cleaned = cleaned.trim();
+        return cleaned || '-';
+    } catch(e) {
+        return '-';
+    }
+}
+
+// ========== تحميل الإحصائيات ==========
+async function loadStats() {
+    try {
+        const res = await fetch('/api/attendance_summary');
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card"><div class="stat-number">${data.total_students || 0}</div><div class="stat-label">👨‍🎓 إجمالي الطلاب</div></div>
+                <div class="stat-card"><div class="stat-number" style="color:#28a745;">${data.present || 0}</div><div class="stat-label">✅ الحضور اليوم</div></div>
+                <div class="stat-card"><div class="stat-number" style="color:#fd7e14;">${data.late || 0}</div><div class="stat-label">⏰ التأخير اليوم</div></div>
+                <div class="stat-card"><div class="stat-number" style="color:#dc3545;">${data.absent || 0}</div><div class="stat-label">❌ الغياب اليوم</div></div>
+                <div class="stat-card"><div class="stat-number">${data.percentage || 0}%</div><div class="stat-label">📈 نسبة الحضور</div></div>
+            `;
+            document.getElementById('todayDate').innerHTML = data.date || '';
+        }
+    } catch(e) { console.error(e); }
+}
+
+// ========== عرض جدول الحضور (مع تنظيف النصوص) ==========
+async function loadTodayAttendance() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`/api/attendance_details/${today}`);
+        const data = await res.json();
+        const container = document.getElementById('todayTable');
+        
+        if (!data.success) {
+            container.innerHTML = `<div class="error-state">❌ خطأ: ${data.error || 'خطأ غير معروف'}</div>`;
+            return;
+        }
+        
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px;">📭 لا توجد بيانات حضور لهذا اليوم</div>';
+            return;
+        }
+        
+        let html = '<div class="table-container"><table dir="rtl"><thead><tr>';
+        html += '<th>#</th><th>رقم الطالب</th><th>الاسم</th><th>الصف</th><th>الشعبة</th><th>الوقت</th><th>الحالة</th>';
+        html += '</thead><tbody>';
+        
+        data.data.forEach((s, i) => {
+            let statusClass = (s.status === 'حاضر في الوقت') ? 'present' : ((s.status === 'متأخر') ? 'late' : 'absent');
+            let icon = (s.status === 'حاضر في الوقت') ? '✅' : ((s.status === 'متأخر') ? '⏰' : '❌');
+            html += `<tr>
+                <td style="text-align:center;">${i+1}侧的
+                <td style="text-align:center;">${cleanText(s.student_id)}侧的
+                <td style="text-align:center;">${cleanText(s.student_name)}侧的
+                <td style="text-align:center;">${cleanText(s.grade)}侧的
+                <td style="text-align:center;">${cleanText(s.class)}侧的
+                <td style="text-align:center;">${cleanText(s.time)}侧的
+                <td class="${statusClass}" style="text-align:center;">${icon} ${cleanText(s.status)}侧的
+            </tr>`;
+        });
+        
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch(e) { 
+        console.error(e);
+        document.getElementById('todayTable').innerHTML = `<div class="error-state">❌ خطأ: ${e.message}</div>`;
+    }
+}
+
+// ========== تحميل تقرير بتاريخ ==========
+async function loadDateReport() {
+    const date = document.getElementById('selectedDate').value;
+    if (!date) { 
+        alert('الرجاء اختيار تاريخ'); 
+        return; 
+    }
+    try {
+        const res = await fetch(`/api/attendance_details/${date}`);
+        const data = await res.json();
+        const container = document.getElementById('dateReport');
+        
+        if (!data.success) {
+            container.innerHTML = `<div class="error-state">❌ خطأ: ${data.error || 'خطأ غير معروف'}</div>`;
+            return;
+        }
+        
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px;">📭 لا توجد بيانات لهذا التاريخ</div>';
+            return;
+        }
+        
+        let html = '<div class="table-container"><table dir="rtl"><thead><tr>';
+        html += '<th>#</th><th>رقم الطالب</th><th>الاسم</th><th>الصف</th><th>الشعبة</th><th>الوقت</th><th>الحالة</th>';
+        html += '</thead><tbody>';
+        
+        data.data.forEach((s, i) => {
+            let statusClass = (s.status === 'حاضر في الوقت') ? 'present' : ((s.status === 'متأخر') ? 'late' : 'absent');
+            let icon = (s.status === 'حاضر في الوقت') ? '✅' : ((s.status === 'متأخر') ? '⏰' : '❌');
+            html += `<tr>
+                <td style="text-align:center;">${i+1}侧的
+                <td style="text-align:center;">${cleanText(s.student_id)}侧的
+                <td style="text-align:center;">${cleanText(s.student_name)}侧的
+                <td style="text-align:center;">${cleanText(s.grade)}侧的
+                <td style="text-align:center;">${cleanText(s.class)}侧的
+                <td style="text-align:center;">${cleanText(s.time)}侧的
+                <td class="${statusClass}" style="text-align:center;">${icon} ${cleanText(s.status)}侧的
+            </tr>`;
+        });
+        
+        html += '</tbody><tr></div>';
+        container.innerHTML = html;
+    } catch(e) { 
+        console.error(e);
+        document.getElementById('dateReport').innerHTML = `<div class="error-state">❌ خطأ: ${e.message}</div>`;
+    }
+}
+
+// ========== تحميل تقرير شهري ==========
+async function loadMonthlyReport() {
+    const month = document.getElementById('monthSelect').value;
+    const year = document.getElementById('yearSelect').value;
+    try {
+        const res = await fetch(`/api/monthly_report?month=${month}&year=${year}`);
+        const data = await res.json();
+        const container = document.getElementById('monthlyReport');
+        
+        if (!data.success) {
+            container.innerHTML = `<div class="error-state">❌ خطأ: ${data.error || 'خطأ غير معروف'}</div>`;
+            return;
+        }
+        
+        if (!data.daily_stats || data.daily_stats.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px;">📭 لا توجد بيانات لهذا الشهر</div>';
+            return;
+        }
+        
+        let html = `
+            <div class="stats-grid" style="margin-bottom:20px;">
+                <div class="stat-card"><div class="stat-number">${data.total_present || 0}</div><div class="stat-label">✅ إجمالي الحضور</div></div>
+                <div class="stat-card"><div class="stat-number">${data.total_late || 0}</div><div class="stat-label">⏰ إجمالي التأخير</div></div>
+            </div>
+            <div class="table-container">
+                <table dir="rtl">
+                    <thead><tr><th>اليوم</th><th>✅ الحاضرون</th><th>⏰ المتأخرون</th><th>❌ الغائبون</th></tr></thead>
+                    <tbody>
+        `;
+        
+        data.daily_stats.forEach(d => {
+            html += `<tr>
+                <td style="text-align:center;">اليوم ${d.day}侧的
+                <td class="present" style="text-align:center;">${d.present || 0}侧的
+                <td class="late" style="text-align:center;">${d.late || 0}侧的
+                <td class="absent" style="text-align:center;">${d.absent || 0}侧的
+            </tr>`;
+        });
+        
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch(e) { 
+        console.error(e);
+        document.getElementById('monthlyReport').innerHTML = `<div class="error-state">❌ خطأ: ${e.message}</div>`;
+    }
+}
+
+// ========== تحميل الغائبين ==========
+async function loadAbsentStudents() {
+    try {
+        const res = await fetch('/api/absent_students_today');
+        const data = await res.json();
+        const container = document.getElementById('absentTable');
+        
+        if (!data.success) {
+            container.innerHTML = `<div class="error-state">❌ خطأ: ${data.error || 'خطأ غير معروف'}</div>`;
+            return;
+        }
+        
+        document.getElementById('absentDate').innerHTML = data.date || '';
+        
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px;">🎉 لا يوجد طلاب غائبون اليوم</div>';
+            return;
+        }
+        
+        let html = `
+            <div style="margin-bottom:15px;"><strong>📅 التاريخ:</strong> ${data.date} | <strong>👥 عدد الغائبين:</strong> ${data.count || data.data.length}</div>
+            <div class="table-container">
+                <table dir="rtl">
+                    <thead><tr><th>#</th><th>رقم الطالب</th><th>الاسم</th><th>الصف</th><th>الشعبة</th></tr></thead>
+                    <tbody>
+        `;
+        
+        data.data.forEach((s, i) => {
+            html += `<tr>
+                <td style="text-align:center;">${i+1}侧的
+                <td style="text-align:center;">${cleanText(s.student_id)}侧的
+                <td style="text-align:center;">${cleanText(s.name)}侧的
+                <td style="text-align:center;">${cleanText(s.grade)}侧的
+                <td style="text-align:center;">${cleanText(s.class)}侧的
+            </tr>`;
+        });
+        
+        html += '</tbody><table></div>';
+        container.innerHTML = html;
+    } catch(e) { 
+        console.error(e);
+        document.getElementById('absentTable').innerHTML = `<div class="error-state">❌ خطأ: ${e.message}</div>`;
+    }
+}
+
+// ========== البحث عن طالب ==========
+async function searchStudent() {
+    const studentId = document.getElementById('studentSearch').value.trim();
+    if (!studentId) { 
+        alert('أدخل رقم الطالب'); 
+        return; 
+    }
+    try {
+        const res = await fetch(`/api/student_report/${studentId}`);
+        const data = await res.json();
+        const container = document.getElementById('studentResult');
+        
+        if (!data.success) {
+            container.innerHTML = `<div class="error-state">❌ ${data.error || 'لم يتم العثور على الطالب'}</div>`;
+            return;
+        }
+        
+        let recordsHtml = '';
+        if (data.records && data.records.length > 0) {
+            recordsHtml = data.records.map(r => {
+                let icon = (r.status === 'حاضر في الوقت') ? '✅' : ((r.status === 'متأخر') ? '⏰' : '❌');
+                return `<tr><td style="text-align:center;">${cleanText(r.date)}侧的<td style="text-align:center;">${cleanText(r.time)}侧的<td style="text-align:center;">${icon} ${cleanText(r.status)}侧的<tr>`;
+            }).join('');
+        } else {
+            recordsHtml = '<tr><td colspan="3" style="text-align:center;">لا توجد سجلات حضور侧的</tr>';
+        }
+        
+        container.innerHTML = `
+            <div class="stats-grid" style="margin-top:20px;">
+                <div class="stat-card"><div class="stat-number">${data.total_days || 0}</div><div class="stat-label">أيام الحضور</div></div>
+                <div class="stat-card"><div class="stat-number" style="color:#28a745;">${data.present || 0}</div><div class="stat-label">✅ حاضر في الوقت</div></div>
+                <div class="stat-card"><div class="stat-number" style="color:#fd7e14;">${data.late || 0}</div><div class="stat-label">⏰ متأخر</div></div>
+                <div class="stat-card"><div class="stat-number" style="color:#dc3545;">${data.absent || 0}</div><div class="stat-label">❌ غائب</div></div>
+                <div class="stat-card"><div class="stat-number">${data.attendance_rate || 0}%</div><div class="stat-label">نسبة الحضور</div></div>
+            </div>
+            <h4>🧑‍🎓 ${cleanText(data.student_name)} - الصف ${cleanText(data.grade)} - الشعبة ${cleanText(data.class)}</h4>
+            <div class="table-container">
+                <table dir="rtl">
+                    <thead><tr><th>التاريخ</th><th>الوقت</th><th>الحالة</th></tr></thead>
+                    <tbody>${recordsHtml}</tbody>
+                </table>
+            </div>
+        `;
+    } catch(e) { 
+        console.error(e);
+        document.getElementById('studentResult').innerHTML = `<div class="error-state">❌ خطأ: ${e.message}</div>`;
+    }
+}
+
+// ========== تبديل التبويبات ==========
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+    event.target.classList.add('active');
+    
+    if (tabName === 'today') {
+        loadTodayAttendance();
+    } else if (tabName === 'absent') {
+        loadAbsentStudents();
+    } else if (tabName === 'monthly') {
+        loadMonthlyReport();
+    }
+}
+
+// ========== دوال التصدير ==========
+function exportTodayExcel() {
+    window.location.href = '/api/export_today_excel';
+}
+
+function exportDateExcel() {
+    const date = document.getElementById('selectedDate').value;
+    if (!date) { alert('الرجاء اختيار تاريخ'); return; }
+    window.location.href = `/api/export_attendance/${date}`;
+}
+
+function exportMonthlyExcel() {
+    const month = document.getElementById('monthSelect').value;
+    const year = document.getElementById('yearSelect').value;
+    window.location.href = `/api/export_monthly_excel?month=${month}&year=${year}`;
+}
+
+function exportStudentExcel() {
+    const studentId = document.getElementById('studentSearch').value.trim();
+    if (!studentId) { alert('الرجاء إدخال رقم الطالب'); return; }
+    window.location.href = `/api/export_student_excel/${studentId}`;
+}
+
+function exportAbsentExcel() {
+    const absentData = [];
+    const rows = document.querySelectorAll('#absentTable tbody tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 4) {
+            absentData.push({
+                'رقم الطالب': cells[1]?.innerText,
+                'اسم الطالب': cells[2]?.innerText,
+                'الصف': cells[3]?.innerText,
+                'الشعبة': cells[4]?.innerText
+            });
+        }
+    });
+    if (absentData.length) {
+        const ws = XLSX.utils.json_to_sheet(absentData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'الغائبون');
+        XLSX.writeFile(wb, `absent_students_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } else {
+        alert('لا توجد بيانات للتصدير');
+    }
+}
+
+// ========== دوال الطباعة ==========
+function printTodayReport() {
+    const content = document.getElementById('todayTable').innerHTML;
+    const date = document.getElementById('todayDate').innerText;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>تقرير حضور اليوم</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:center}th{background:#667eea;color:white}</style></head><body><h2>تقرير حضور اليوم - ${date}</h2>${content}</body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function printDateReport() {
+    const content = document.getElementById('dateReport').innerHTML;
+    const date = document.getElementById('selectedDate').value;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>تقرير الحضور</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:center}th{background:#667eea;color:white}</style></head><body><h2>تقرير الحضور - ${date}</h2>${content}</body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function printMonthlyReport() {
+    const content = document.getElementById('monthlyReport').innerHTML;
+    const month = document.getElementById('monthSelect').options[document.getElementById('monthSelect').selectedIndex].text;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>تقرير شهري</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:center}th{background:#667eea;color:white}</style></head><body><h2>تقرير شهري - ${month}</h2>${content}</body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function printStudentReport() {
+    const content = document.getElementById('studentResult').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>تقرير طالب</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:center}th{background:#667eea;color:white}</style></head><body>${content}</body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function printAbsentReport() {
+    const content = document.getElementById('absentTable').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>الطلاب الغائبون</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:center}th{background:#667eea;color:white}</style></head><body><h2>الطلاب الغائبون اليوم</h2>${content}</body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// ========== التحديث اليدوي ==========
+async function manualRefresh() {
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = "⏳ جاري التحديث...";
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/force_sync');
+        const data = await response.json();
+        if (data.success) {
+            alert(`✅ تم تحديث البيانات بنجاح!\nالطلاب: ${data.students_count}\nسجلات الحضور: ${data.attendance_count}`);
+            location.reload();
+        } else {
+            alert('❌ فشل تحديث البيانات: ' + (data.error || 'خطأ غير معروف'));
+        }
+    } catch (error) {
+        alert('❌ خطأ في الاتصال: ' + error.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
+// ========== إعادة تحميل كامل ==========
+async function fullReload() {
+    if (!confirm('⚠️ هل أنت متأكد من إعادة تحميل جميع البيانات من Google Sheets؟\nسيتم تحديث جميع التقارير بالبيانات الحديثة.')) return;
+    
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = "⏳ جاري التحميل...";
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/full_reload');
+        const data = await response.json();
+        if (data.success) {
+            alert(`✅ تم إعادة تحميل البيانات بنجاح!\n📚 الطلاب: ${data.students_count}\n📋 سجلات الحضور: ${data.attendance_count}`);
+            location.reload();
+        } else {
+            alert('❌ فشل إعادة تحميل البيانات: ' + (data.error || 'خطأ غير معروف'));
+        }
+    } catch (error) {
+        alert('❌ خطأ في الاتصال: ' + error.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
+// ========== تحديث تلقائي للبيانات ==========
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshInterval = setInterval(async () => {
+        try {
+            const response = await fetch('/api/auto_refresh');
+            const data = await response.json();
+            if (data.success) {
+                console.log('🔄 تم تحديث البيانات:', data.students_count, 'طالب,', data.attendance_count, 'سجل');
+                if (document.getElementById('tab-today').classList.contains('active')) {
+                    loadTodayAttendance();
+                } else if (document.getElementById('tab-absent').classList.contains('active')) {
+                    loadAbsentStudents();
+                } else if (document.getElementById('tab-monthly').classList.contains('active')) {
+                    loadMonthlyReport();
+                }
+                loadStats();
+            }
+        } catch(e) {
+            console.error('خطأ في التحديث التلقائي:', e);
+        }
+    }, 30000);
+}
+
+// ========== تحميل البيانات عند فتح الصفحة ==========
+loadStats();
+loadTodayAttendance();
+startAutoRefresh();
+</script>
+</body>
+</html>

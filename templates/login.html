@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - نظام حضور الطلاب</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-container {
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+        .logo { font-size: 60px; margin-bottom: 20px; }
+        h1 { color: #333; margin-bottom: 10px; font-size: 24px; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
+        input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        button:hover { transform: translateY(-2px); }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .admin-card, .teacher-card {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            text-align: right;
+        }
+        .admin-card { border-right: 4px solid #667eea; }
+        .teacher-card { border-right: 4px solid #28a745; }
+        code { background: #e9ecef; padding: 2px 5px; border-radius: 5px; }
+        hr { margin: 10px 0; border: none; border-top: 1px solid #ddd; }
+        .note { color: #666; font-size: 11px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">🏫</div>
+        <h1>نظام حضور الطلاب</h1>
+        <p class="subtitle">الرجاء تسجيل الدخول للمتابعة</p>
+        
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST">
+            <input type="text" name="username" placeholder="اسم المستخدم" required>
+            <input type="password" name="password" placeholder="كلمة المرور" required>
+            <button type="submit">دخول</button>
+        </form>
+        
+        <div class="info">
+            <strong>📋 معلومات الدخول:</strong><br>
+            <div class="teacher-card">
+                👨‍🏫 <strong>معلم </strong><br>
+                اسم المستخدم: <code>admin</code><br>
+                كلمة المرور: <code>admin123</code>
+            </div>
+            <hr>
+            <div class="note">
+                ℹ️ ملاحظة: يمكن للمعلم تسجيل الدخول 5 مرات فقط للنسخة التجريبية بعد انتهاء المحاولات، يرجى التواصل مع مدير النظام.0554289816
+            </div>
+        </div>
+    </div>
+</body>
+</html>

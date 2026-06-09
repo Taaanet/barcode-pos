@@ -1,238 +1,164 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>نقطة بيع البقالة</title>
-    <!-- إضافة مكتبة مسح الباركود -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام حضور الطلاب</title>
     <style>
-        * { box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Tahoma', Arial;
-            direction: rtl;
-            background: #f5f5f5;
-            margin: 0;
-            padding: 10px;
+            font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
         }
-        .container { max-width: 600px; margin: auto; background: white; padding: 15px; border-radius: 10px; }
-        input, button { padding: 10px; margin: 5px; font-size: 16px; }
-        button { background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button.danger { background: #dc3545; }
-        button.success { background: #28a745; }
-        .product-card { background: #e9ecef; padding: 10px; margin: 10px 0; border-radius: 8px; }
-        .cart-item { background: white; border: 1px solid #ddd; padding: 8px; margin: 5px 0; border-radius: 5px; }
-        #invoice { background: #f8f9fa; padding: 15px; margin-top: 20px; border-radius: 8px; }
-        @media print { .no-print { display: none; } }
+        .container {
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        .school-logo {
+            margin-bottom: 20px;
+        }
+        .logo-circle {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-circle span { font-size: 50px; }
+        .school-name { margin-top: 10px; font-size: 18px; font-weight: bold; color: #667eea; }
+        h1 { color: #333; margin-bottom: 10px; font-size: 24px; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .welcome { color: #667eea; font-weight: bold; }
+        .admin-link { color: #667eea; text-decoration: none; font-size: 14px; background: #f0f0f0; padding: 5px 10px; border-radius: 15px; }
+        .logout-link { color: #dc3545; text-decoration: none; font-size: 14px; }
+        .btn {
+            display: block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            font-size: 18px;
+            text-decoration: none;
+            border-radius: 60px;
+            margin: 12px 0;
+            font-weight: bold;
+        }
+        .btn-reports { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .btn-dashboard { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); }
+        .time-info {
+            background: #e7f3ff;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .time-info strong { color: #667eea; }
+        .warning-text { color: #dc3545; font-weight: bold; }
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: right;
+        }
+        .info-box h3 { color: #667eea; margin-bottom: 10px; }
+        .login-alert {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+        .footer {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 25px 20px; }
+            h1 { font-size: 20px; }
+            .btn { padding: 12px 20px; font-size: 16px; }
+            .footer { font-size: 9px; }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>🏪 بقالتي - نقطة بيع</h1>
-    
-    <!-- منطقة الإدخال -->
-    <div class="no-print">
-        <input type="text" id="barcode" placeholder="مسح أو إدخال الباركود" autofocus style="width: 70%;">
-        <button onclick="fetchProduct()">🔍 بحث</button>
-        <button onclick="startScanner()">📷 مسح</button>
-        <div id="scanner-container" style="display:none; margin-top:10px;">
-            <div id="qr-reader" style="width:100%;"></div>
-            <button onclick="stopScanner()">إغلاق الكاميرا</button>
+    <div class="container">
+        <div class="school-logo">
+            <div class="logo-circle"><span>🏫</span></div>
+            <div class="school-name">المدرسة النموذجية</div>
+        </div>
+        
+        <div class="user-info">
+            <span class="welcome">👋 مرحباً {{ session.get('username', 'مدير النظام') }}</span>
+            <div>
+                {% if session.get('role') == 'admin' %}
+                    <a href="/users_list" class="admin-link">👥 إدارة المستخدمين</a>
+                {% endif %}
+                <a href="/logout" class="logout-link">🚪 خروج</a>
+            </div>
+        </div>
+        
+        {% if session.get('role') != 'admin' and session.get('remaining_logins') is not none %}
+        <div class="login-alert">
+            🔑 نسخة تجريبية :عدد مرات الدخول المتبقية: <strong>{{ session.get('remaining_logins') }}</strong> من أصل 5
+        </div>
+        {% endif %}
+        
+        <h1>نظام الحضور الذكي</h1>
+        <p class="subtitle">نظام ذكي لمتابعة حضور الطلاب باستخدام رموز QR</p>
+        
+        <div class="time-info">
+            <p>⏰ توقيت المملكة العربية السعودية</p>
+            <p>🕐 وقت تسجيل الحضور: 6:00 صباحاً - 12:00 ظهراً</p>
+            <p>✅ الحضور قبل <strong>7:30 صباحاً يعتبر حاضر في الوقت</p>
+            <p>⏰ الحضور بعد 7:30 صباحاً يعتبر متأخر</p>
+            <p>📅 <span class="warning-text">❌ أيام العطلات: الجمعة والسبت (لا يمكن تسجيل الحضور)</span></p>
+        </div>
+        
+        <a href="/scan" class="btn">📷 مسح QR Code</a>
+        <a href="/reports" class="btn btn-reports">📊 التقارير والإحصائيات</a>
+        <a href="/dashboard" class="btn btn-dashboard">📈 لوحة التحكم</a>
+        
+        <div class="info-box">
+            <h3>ℹ️ معلومات عن النظام</h3>
+            <p>✅ مسح رمز QR الخاص بالطالب لتسجيل الحضور تلقائياً</p>
+            <p>✅ التسجيل فقط من 6:00 صباحاً حتى 12:00 ظهراً </p>
+            <p>✅ الحضور من 6:00 - 7:30 (حاضر في الوقت) / بعد 7:30 (متأخر)</p>
+            <p>✅ لا يسجل الطالب أكثر من مرة في نفس اليوم</p>
+            <p>✅ رسوم بيانية وإحصائيات متقدمة</p>
+            <p>✅ تقارير يومية، شهرية، وأفضل الطلاب حضوراً</p>
+        </div>
+        
+        <div class="footer">
+            نظام الحضور الذكي | جميع الحقوق محفوظة<br>
+            Taha_Mohamad © 2026 | E-mail: taaanet@gmail.com | Phone: 0554289816
         </div>
     </div>
-
-    <!-- معلومات المنتج الحالي -->
-    <div id="productInfo"></div>
-
-    <!-- سلة المشتريات -->
-    <div id="cart"></div>
-
-    <!-- أزرار سريعة -->
-    <div class="no-print">
-        <button onclick="applyDiscount()" style="background:#ffc107; color:#000;">🏷️ خصم</button>
-        <button onclick="finishInvoice()" class="success">✅ إنهاء الفاتورة</button>
-        <button onclick="resetCart()" class="danger">🗑️ فاتورة جديدة</button>
-    </div>
-
-    <!-- الفاتورة -->
-    <div id="invoice"></div>
-</div>
-
-<script>
-    let productsInCart = [];
-    let currentProduct = null;
-    let discountPercent = 0;
-    let html5QrCode = null;
-
-    // جلب المنتج من الخادم
-    async function fetchProduct() {
-        let barcode = document.getElementById('barcode').value.trim();
-        if (!barcode) return;
-        
-        let response = await fetch('/get_product', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({barcode: barcode})
-        });
-        let data = await response.json();
-        
-        if (data.status === 'found') {
-            currentProduct = {barcode: barcode, name: data.name, price: data.price};
-            showProductForm(data.name, data.price);
-        } else {
-            alert("❌ المنتج غير موجود! يرجى إضافته في Google Sheets أولاً.");
-        }
-        document.getElementById('barcode').value = '';
-    }
-
-    function showProductForm(name, price) {
-        document.getElementById('productInfo').innerHTML = `
-            <div class="product-card">
-                <strong>${name}</strong><br>
-                السعر: ${price} ريال<br>
-                العدد: <input type="number" id="qty" value="1" min="1" style="width:80px">
-                <button onclick="addToCart()">➕ إضافة</button>
-            </div>
-        `;
-    }
-
-    function addToCart() {
-        let qty = parseInt(document.getElementById('qty').value);
-        let total = qty * currentProduct.price;
-        productsInCart.push({
-            name: currentProduct.name,
-            price: currentProduct.price,
-            qty: qty,
-            total: total
-        });
-        renderCart();
-        document.getElementById('productInfo').innerHTML = '';
-        document.getElementById('barcode').focus();
-    }
-
-    function renderCart() {
-        let cartDiv = document.getElementById('cart');
-        let subtotal = productsInCart.reduce((sum, p) => sum + p.total, 0);
-        let discountAmount = subtotal * (discountPercent / 100);
-        let finalTotal = subtotal - discountAmount;
-        
-        cartDiv.innerHTML = '<h3>🛒 المنتجات المضافة</h3>';
-        productsInCart.forEach((p, idx) => {
-            cartDiv.innerHTML += `
-                <div class="cart-item">
-                    ${p.name} | عدد: ${p.qty} | إجمالي: ${p.total} ريال
-                    <button onclick="removeItem(${idx})" style="background:#dc3545; padding:2px 8px;">✖️</button>
-                </div>
-            `;
-        });
-        cartDiv.innerHTML += `
-            <hr>
-            <div>💰 المجموع قبل الخصم: ${subtotal.toFixed(2)} ريال</div>
-            <div>🏷️ الخصم (${discountPercent}%): ${discountAmount.toFixed(2)} ريال</div>
-            <div style="font-size:20px; font-weight:bold;">💵 الإجمالي النهائي: ${finalTotal.toFixed(2)} ريال</div>
-        `;
-    }
-
-    function removeItem(index) {
-        productsInCart.splice(index, 1);
-        renderCart();
-    }
-
-    function applyDiscount() {
-        let percent = prompt("أدخل نسبة الخصم (%)", discountPercent);
-        if (percent !== null && !isNaN(percent)) {
-            discountPercent = parseFloat(percent);
-            renderCart();
-        }
-    }
-
-    async function finishInvoice() {
-        if (productsInCart.length === 0) {
-            alert("لا توجد منتجات في الفاتورة");
-            return;
-        }
-        
-        let subtotal = productsInCart.reduce((sum, p) => sum + p.total, 0);
-        let discountAmount = subtotal * (discountPercent / 100);
-        let finalTotal = subtotal - discountAmount;
-        let totalItems = productsInCart.reduce((sum, p) => sum + p.qty, 0);
-        let productsList = productsInCart.map(p => `${p.name}×${p.qty}`).join(',');
-        
-        // حفظ الفاتورة في Google Sheets
-        await fetch('/save_invoice', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                timestamp: new Date().toLocaleString('ar-SA'),
-                total_items: totalItems,
-                total_price: subtotal,
-                discount: discountAmount,
-                final_price: finalTotal,
-                products_list: productsList
-            })
-        });
-        
-        // عرض الفاتورة للطباعة
-        let invoiceHtml = `
-            <div style="text-align:center;">
-                <h2>🏪 فاتورة البقالة</h2>
-                <p>التاريخ: ${new Date().toLocaleString('ar-SA')}</p>
-                <hr>
-                <table style="width:100%; border-collapse:collapse;">
-                    <tr style="background:#ddd;"><th>المنتج</th><th>العدد</th><th>السعر</th><th>الإجمالي</th></tr>
-                    ${productsInCart.map(p => `<tr><td>${p.name}</td><td>${p.qty}</td><td>${p.price}</td><td>${p.total}</td></tr>`).join('')}
-                </table>
-                <hr>
-                <p>المجموع: ${subtotal.toFixed(2)} ريال</p>
-                <p>الخصم: ${discountAmount.toFixed(2)} ريال</p>
-                <h3>الإجمالي النهائي: ${finalTotal.toFixed(2)} ريال</h3>
-                <p>عدد القطع: ${totalItems}</p>
-                <hr>
-                <p>شكراً لتسوقكم! 😊</p>
-            </div>
-            <div class="no-print" style="text-align:center; margin-top:20px;">
-                <button onclick="window.print()">🖨️ طباعة</button>
-            </div>
-        `;
-        document.getElementById('invoice').innerHTML = invoiceHtml;
-    }
-
-    function resetCart() {
-        if (confirm("هل تريد بدء فاتورة جديدة؟")) {
-            productsInCart = [];
-            discountPercent = 0;
-            renderCart();
-            document.getElementById('invoice').innerHTML = '';
-            document.getElementById('barcode').focus();
-        }
-    }
-
-    // مسح الباركود بالكاميرا (مجاني)
-    function startScanner() {
-        let scannerContainer = document.getElementById('scanner-container');
-        scannerContainer.style.display = 'block';
-        
-        html5QrCode = new Html5Qrcode("qr-reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-        
-        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-            document.getElementById('barcode').value = decodedText;
-            fetchProduct();
-            stopScanner();
-        }, (error) => {});
-    }
-    
-    function stopScanner() {
-        if (html5QrCode) {
-            html5QrCode.stop();
-            document.getElementById('scanner-container').style.display = 'none';
-        }
-    }
-    
-    // للسماح بالإدخال باليدوي ثم Enter
-    document.getElementById('barcode').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') fetchProduct();
-    });
-</script>
 </body>
 </html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>مسح QR - نظام حضور الطلاب</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tahoma', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        .container {
+            max-width: 550px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 25px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .header h2 { color: #333; font-size: 20px; }
+        .btn-icon {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .camera-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .camera-area {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px 0;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #video {
+            width: 100%;
+            display: none;
+        }
+        .camera-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            flex: 1;
+            font-weight: bold;
+        }
+        .stop-btn { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); display: none; }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 15px;
+            display: none;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: right;
+        }
+        .success { background: #d4edda; color: #155724; border-right: 5px solid #28a745; }
+        .error { background: #f8d7da; color: #721c24; border-right: 5px solid #dc3545; }
+        .info { background: #d1ecf1; color: #0c5460; border-right: 5px solid #17a2b8; }
+        .student-card {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+        .student-card p { margin: 8px 0; }
+        .manual-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px dashed #ddd;
+        }
+        .manual-input { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
+        .manual-input input {
+            flex: 2;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            text-align: center;
+        }
+        .manual-input button { flex: 1; margin: 0; background: #28a745; }
+        .quick-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .quick-buttons button { background: #17a2b8; font-size: 12px; padding: 6px 12px; flex: none; }
+        .status-text { text-align: center; margin-top: 8px; font-size: 12px; color: #666; }
+        .nav-buttons { display: flex; gap: 10px; margin-top: 20px; }
+        .nav-buttons a {
+            flex: 1;
+            text-align: center;
+            background: #6c757d;
+            color: white;
+            padding: 10px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 14px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 550px) {
+            .container { padding: 15px; }
+            button { padding: 10px 16px; font-size: 14px; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>📱 مسح رمز الطالب</h2>
+        <a href="/reports" class="btn-icon">📊 التقارير</a>
+    </div>
+    
+    <div class="camera-section">
+        <div style="font-weight: bold; margin-bottom: 10px;">📷 مسح QR Code</div>
+        <div class="camera-area">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+        </div>
+        <div class="camera-buttons">
+            <button id="startCameraBtn">▶️ تشغيل الكاميرا</button>
+            <button id="stopCameraBtn" class="stop-btn">⏹️ إيقاف الكاميرا</button>
+        </div>
+        <div id="cameraStatus" class="status-text"></div>
+    </div>
+    
+    <div id="result" class="result-box"></div>
+    
+    <hr>
+    
+    <div class="manual-section">
+        <div class="manual-title">🖊️ إدخال رقم الطالب يدوياً</div>
+        <div class="manual-input">
+            <input type="text" id="manualId" placeholder="مثال: 1150436838">
+            <button onclick="registerManually()">✅ تسجيل الحضور</button>
+        </div>
+    </div>
+    
+    <div class="nav-buttons">
+        <a href="/">🏠 الرئيسية</a>
+        <a href="/reports">📊 التقارير</a>
+        <a href="/logout">🚪 خروج</a>
+    </div>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('startCameraBtn');
+const stopBtn = document.getElementById('stopCameraBtn');
+const cameraStatus = document.getElementById('cameraStatus');
+const resultDiv = document.getElementById('result');
+
+let stream = null;
+let scanning = false;
+let animationId = null;
+
+async function registerStudent(studentId) {
+    if (!studentId || studentId.trim() === '') {
+        showResult("⚠️ الرجاء إدخال رقم الطالب", "error");
+        return false;
+    }
+    
+    const id = studentId.trim();
+    showResult("🔄 جاري تسجيل الحضور...", "info");
+    
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_id: id })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // عرض الرسالة مع التأكد من وجود البيانات
+            const studentName = data.student_name || 'الطالب';
+            const studentGrade = data.student_grade || '';
+            const studentClass = data.student_class || '';
+            const time = data.time || new Date().toLocaleTimeString('ar-SA');
+            const date = data.date || new Date().toLocaleDateString('ar-SA');
+            
+            showResult(data.message, "success", {
+                student_name: studentName,
+                student_grade: studentGrade,
+                student_class: studentClass,
+                time: time,
+                date: date
+            });
+            document.getElementById('manualId').value = '';
+            return true;
+        } else {
+            showResult(`❌ ${data.message}`, "error");
+            return false;
+        }
+    } catch (error) {
+        showResult(`❌ خطأ في الاتصال: ${error.message}`, "error");
+        return false;
+    }
+}
+
+function registerManually() {
+    const studentId = document.getElementById('manualId').value;
+    registerStudent(studentId);
+}
+
+function showResult(message, type, studentData = null) {
+    resultDiv.style.display = 'block';
+    resultDiv.className = `result-box ${type}`;
+    
+    if (studentData && studentData.student_name) {
+        const statusIcon = message.includes('حاضر') ? '✅' : (message.includes('متأخر') ? '⏰' : '⚠️');
+        resultDiv.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 10px;">${statusIcon} ${message}</div>
+            <div class="student-card">
+                <p>🧑‍🎓 <strong>الاسم:</strong> ${studentData.student_name}</p>
+                <p>📚 <strong>الصف:</strong> ${studentData.student_grade} - الشعبة ${studentData.student_class}</p>
+                <p>⏰ <strong>الوقت:</strong> ${studentData.time}</p>
+                <p>📅 <strong>التاريخ:</strong> ${studentData.date}</p>
+            </div>
+        `;
+    } else {
+        resultDiv.innerHTML = message;
+    }
+    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function handleScannedCode(decodedText) {
+    if (!decodedText) return;
+    stopScanner();
+    await registerStudent(decodedText);
+    setTimeout(() => {
+        if (stream && !scanning) startScanner();
+    }, 3000);
+}
+
+async function scanFrame() {
+    if (!scanning || !video.videoWidth || !video.videoHeight) {
+        animationId = requestAnimationFrame(scanFrame);
+        return;
+    }
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, canvas.width, canvas.height);
+    
+    if (code && code.data) {
+        await handleScannedCode(code.data.trim());
+    }
+    
+    animationId = requestAnimationFrame(scanFrame);
+}
+
+async function startScanner() {
+    if (stream) stopScanner();
+    
+    try {
+        cameraStatus.innerHTML = "📷 جاري تشغيل الكاميرا...";
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
+        video.srcObject = stream;
+        video.style.display = "block";
+        await video.play();
+        scanning = true;
+        scanFrame();
+        startBtn.style.display = "none";
+        stopBtn.style.display = "block";
+        cameraStatus.innerHTML = "✅ الكاميرا تعمل - وجه الهاتف نحو رمز QR";
+    } catch(err) {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.style.display = "block";
+            await video.play();
+            scanning = true;
+            scanFrame();
+            startBtn.style.display = "none";
+            stopBtn.style.display = "block";
+            cameraStatus.innerHTML = "✅ الكاميرا تعمل";
+        } catch(err2) {
+            cameraStatus.innerHTML = "❌ لا يمكن تشغيل الكاميرا";
+            showResult("❌ لا يمكن تشغيل الكاميرا. الرجاء استخدام الإدخال اليدوي.", "error");
+            startBtn.style.display = "block";
+            stopBtn.style.display = "none";
+        }
+    }
+}
+
+function stopScanner() {
+    scanning = false;
+    if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+    if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
+    video.srcObject = null;
+    video.style.display = "none";
+    startBtn.style.display = "block";
+    stopBtn.style.display = "none";
+    cameraStatus.innerHTML = "";
+}
+
+startBtn.addEventListener('click', startScanner);
+stopBtn.addEventListener('click', stopScanner);
+document.getElementById('manualId').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') registerManually();
+});
+
+window.addEventListener('beforeunload', () => {
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    if (animationId) cancelAnimationFrame(animationId);
+});
+</script>
+</body>
+</html>

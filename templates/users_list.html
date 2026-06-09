@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المستخدمين - نظام حضور الطلاب</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header h1 { font-size: 22px; }
+        .header a { color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; }
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        .btn {
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 20px;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover { opacity: 0.8; }
+        .nav-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .nav-buttons a {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 5px;
+            display: inline-block;
+        }
+        .admin-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .user-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .warning { color: #fd7e14; font-weight: bold; }
+        @media (max-width: 768px) {
+            th, td { padding: 10px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>👥 إدارة المستخدمين</h1>
+        <a href="/">🏠 العودة للرئيسية</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>اسم المستخدم</th>
+                <th>الدور</th>
+                <th>عدد مرات الدخول</th>
+                <th>الحد الأقصى</th>
+                <th>المتبقي</th>
+                <th>إجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td><strong>{{ user.username }}</strong></td>
+                <td>
+                    {% if user.role == 'admin' %}
+                        <span class="admin-badge">👑 مدير النظام</span>
+                    {% else %}
+                        <span class="user-badge">👨‍🏫 معلم</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.login_count }}</td>
+                <td>{{ user.max_logins }}</td>
+                <td class="{% if user.remaining < 3 %}warning{% endif %}">
+                    {{ user.remaining }}
+                </td>
+                <td>
+                    {% if user.role != 'admin' %}
+                    <a href="/reset_logins/{{ user.username }}" class="btn" onclick="return confirm('هل أنت متأكد من إعادة تعيين عدد محاولات {{ user.username }}؟')">
+                        🔄 إعادة تعيين
+                    </a>
+                    {% else %}
+                    <span style="color:#999;">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="nav-buttons">
+        <a href="/">🏠 الرئيسية</a>
+        <a href="/scan">📷 المسح</a>
+        <a href="/reports">📊 التقارير</a>
+        <a href="/dashboard">📈 لوحة التحكم</a>
+    </div>
+</div>
+</body>
+</html>
